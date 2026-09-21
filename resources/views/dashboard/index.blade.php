@@ -9,29 +9,29 @@
     @endphp
 
     <div class="cards-row">
-        <a href="{{ route('laporan.index') }}" class="card card-link">
+        <a href="{{ route('laporan.index') }}" class="card card-link card-accent-blue">
             <div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5Z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="16" y2="17"></line></svg></div>
             <div class="card-label">TOTAL ITEMS REGISTERED</div>
             <div class="card-value" id="cardTotalItem">{{ number_format($cards['total_item']) }}</div>
         </a>
-        <a href="{{ route('laporan.index', ['tab' => 'stok']) }}" class="card card-link">
-            <div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2Z"></path></svg></div>
-            <div class="card-label">TOP ITEM BY STOCK</div>
-            @if ($topItem)
-                <div class="card-value" id="cardTopItemQty">{{ number_format($topItem->qty_total) }} {{ $topItem->unit }}</div>
-                <div class="card-sub" id="cardTopItemName">{{ $topItem->component_name }} &middot; {{ $topItem->component }}</div>
+        <a href="{{ route('laporan.index', ['tab' => 'stok']) }}" class="card card-link card-accent-purple">
+            <div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline><polyline points="17 18 23 18 23 12"></polyline></svg></div>
+            <div class="card-label">ITEMS RUNNING LOW</div>
+            @if ($lowestItem)
+                <div class="card-value" id="cardLowestItemQty">{{ number_format($lowestItem->qty_total) }} {{ $lowestItem->unit }}</div>
+                <div class="card-sub" id="cardLowestItemName">{{ $lowestItem->component_name }} &middot; {{ $lowestItem->component }}</div>
             @else
                 <div class="card-value">&mdash;</div>
                 <div class="card-sub">No items in stock yet</div>
             @endif
         </a>
-        <a href="{{ route('laporan.index') }}" class="card card-link">
+        <a href="{{ route('laporan.index') }}" class="card card-link card-accent-green">
             <div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"></rect><rect x="14" y="3" width="7" height="5" rx="1.5"></rect><rect x="14" y="12" width="7" height="9" rx="1.5"></rect><rect x="3" y="16" width="7" height="5" rx="1.5"></rect></svg></div>
             <div class="card-label">SLOTS FILLED</div>
             <div class="card-value"><span id="cardSlotTerisi">{{ $cards['slot_terisi'] }}</span> / {{ $cards['total_slot'] }}</div>
             <div class="card-sub"><span id="cardOkupansi">{{ $cards['okupansi_pct'] }}</span>% occupancy</div>
         </a>
-        <a href="{{ route('transaksi', ['dari' => now()->toDateString(), 'sampai' => now()->toDateString()]) }}" class="card card-link">
+        <a href="{{ route('transaksi', ['dari' => now()->toDateString(), 'sampai' => now()->toDateString()]) }}" class="card card-link card-accent-red">
             <div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 14"></polyline></svg></div>
             <div class="card-label">BOXES IN/OUT TODAY</div>
             <div class="card-value">
@@ -44,30 +44,61 @@
         </a>
     </div>
 
+    <div class="panel">
+        <div class="panel-dark-head">
+            <div class="panel-dark-head-left">
+                <span class="panel-dark-head-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"></path><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"></path><path d="M12 17h.01"></path></svg></span>
+                <span class="panel-dark-head-title">WMS Activity</span>
+            </div>
+        </div>
+        <div class="activity-list" id="wmsActivityList">
+            @forelse ($wmsActivity as $row)
+                <a href="{{ $row['url'] }}" class="activity-row">
+                    <span class="activity-badge">{{ $row['count'] }}</span>
+                    <span class="activity-label">{{ $row['label'] }}</span>
+                    <span class="activity-arrow">&rarr;</span>
+                </a>
+            @empty
+                <div class="activity-empty">All caught up — no pending WMS actions.</div>
+            @endforelse
+        </div>
+    </div>
+
     <div class="panels-row">
         <div class="panel">
-            <div class="panel-title">Utilization per rack</div>
+            <div class="panel-dark-head">
+                <div class="panel-dark-head-left">
+                    <span class="panel-dark-head-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg></span>
+                    <span class="panel-dark-head-title">Utilization per rack</span>
+                </div>
+            </div>
             <div class="panel-caption">Number of filled slots out of 45 per rack, live from current slot status. Click a bar to open that rack.</div>
             <canvas id="chartRack" height="130"></canvas>
         </div>
         <div class="panel">
-            <div class="panel-title-row">
-                <div>
-                    <div class="panel-title">In / out trend</div>
-                    <div class="panel-caption">Number of distinct boxes moved in &amp; out per day, calculated from the transaction ledger.</div>
+            <div class="panel-dark-head">
+                <div class="panel-dark-head-left">
+                    <span class="panel-dark-head-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 7"></polyline><polyline points="14 7 21 7 21 14"></polyline></svg></span>
+                    <span class="panel-dark-head-title">In / out trend</span>
                 </div>
                 <div class="range-pills no-print">
                     @foreach ([7, 14, 30] as $d)
-                        <a href="{{ route('dashboard', ['days' => $d]) }}" class="range-pill {{ $days === $d ? 'active' : '' }}">{{ $d }}D</a>
+                        <a href="{{ route('dashboard', ['days' => $d]) }}" class="range-pill-dark {{ $days === $d ? 'active' : '' }}">{{ $d }}D</a>
                     @endforeach
                 </div>
             </div>
+            <div class="panel-caption">Number of distinct boxes moved in &amp; out per day, calculated from the transaction ledger.</div>
             <canvas id="chartTrend" height="130"></canvas>
         </div>
     </div>
 
     <div class="panel">
-        <div class="panel-title">Item Overview</div>
+        <div class="panel-dark-head">
+            <div class="panel-dark-head-left">
+                <span class="panel-dark-head-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg></span>
+                <span class="panel-dark-head-title">Item Overview</span>
+            </div>
+        </div>
         <div class="panel-caption">
             Current stock &amp; number of movements per item over the last {{ $days }} days, most active first
             @if ($cards['total_item'] > $itemOverview->count())
@@ -151,6 +182,21 @@
     const fmt = n => Number(n).toLocaleString('en-US');
     const fmtDelta = n => (n > 0 ? '+' : '') + n;
 
+    function renderWmsActivity(rows) {
+        const list = document.getElementById('wmsActivityList');
+        if (!list) return;
+        if (!rows.length) {
+            list.innerHTML = '<div class="activity-empty">All caught up — no pending WMS actions.</div>';
+            return;
+        }
+        list.innerHTML = rows.map(row => `
+            <a href="${row.url}" class="activity-row">
+                <span class="activity-badge">${row.count}</span>
+                <span class="activity-label">${row.label}</span>
+                <span class="activity-arrow">&rarr;</span>
+            </a>`).join('');
+    }
+
     function renderItemOverview(items) {
         const list = document.getElementById('itemOverviewList');
         if (!list) return;
@@ -180,11 +226,11 @@
             document.getElementById('cardBoxDelta').textContent =
                 `vs yesterday: ${fmtDelta(d.cards.box_in_today - d.cards.box_in_yesterday)} in · ${fmtDelta(d.cards.box_out_today - d.cards.box_out_yesterday)} out`;
 
-            const topQtyEl = document.getElementById('cardTopItemQty');
-            const topNameEl = document.getElementById('cardTopItemName');
-            if (d.top_item && topQtyEl && topNameEl) {
-                topQtyEl.textContent = `${fmt(d.top_item.qty_total)} ${d.top_item.unit}`;
-                topNameEl.textContent = `${d.top_item.component_name} · ${d.top_item.component}`;
+            const lowestQtyEl = document.getElementById('cardLowestItemQty');
+            const lowestNameEl = document.getElementById('cardLowestItemName');
+            if (d.lowest_item && lowestQtyEl && lowestNameEl) {
+                lowestQtyEl.textContent = `${fmt(d.lowest_item.qty_total)} ${d.lowest_item.unit}`;
+                lowestNameEl.textContent = `${d.lowest_item.component_name} · ${d.lowest_item.component}`;
             }
 
             chartRack.data.datasets[0].data = d.utilization.map(u => u.filled);
@@ -196,6 +242,7 @@
             chartTrend.update();
 
             renderItemOverview(d.item_overview);
+            renderWmsActivity(d.wms_activity);
         } catch (e) { /* stay quiet, retry on the next interval */ }
     }
     setInterval(refreshDashboard, 30000);

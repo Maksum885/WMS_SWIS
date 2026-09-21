@@ -7,12 +7,11 @@
             'sort' => $col,
             'dir' => ($sortBy === $col && $sortDir === 'asc') ? 'desc' : 'asc',
         ]);
-        $sortIcon = fn (string $col) => $sortBy !== $col ? '' : ($sortDir === 'asc' ? ' &uarr;' : ' &darr;');
         $tabUrl = fn (string $t) => request()->fullUrlWithQuery(['tab' => $t, 'page' => null]);
         $removeParam = fn (string $key) => route('laporan.index', collect(request()->query())->except([$key, 'page'])->all());
         $removePeriod = route('laporan.index', collect(request()->query())->except(['dari', 'sampai', 'page'])->all());
         $hasFilter = (bool) ($rackFilter || $search || $dateFrom || $dateTo);
-        $tabLabel = ['stok' => 'Stock per Item', 'utilisasi' => 'Rack Utilization', 'mutasi' => 'Movement Summary'][$activeTab];
+        $tabLabel = ['stok' => 'Stock per Item', 'utilisasi' => 'Rack Utilization', 'mutasi' => 'Movement Summary', 'putaway' => 'Put Away Summary'][$activeTab];
     @endphp
 
     <div class="report-meta">
@@ -26,9 +25,10 @@
     <div class="rack-tabs no-print">
         <a href="{{ $tabUrl('stok') }}" class="rack-tab {{ $activeTab === 'stok' ? 'active' : '' }}">A &middot; Stock per Item</a>
         <a href="{{ $tabUrl('utilisasi') }}" class="rack-tab {{ $activeTab === 'utilisasi' ? 'active' : '' }}">
-            B &middot; Rack Utilization{{ $nearFullCount > 0 ? " \u{26A0}{$nearFullCount}" : '' }}
+            B &middot; Rack Utilization{{ $nearFullCount > 0 ? " ({$nearFullCount})" : '' }}
         </a>
         <a href="{{ $tabUrl('mutasi') }}" class="rack-tab {{ $activeTab === 'mutasi' ? 'active' : '' }}">C &middot; Movement Summary</a>
+        <a href="{{ $tabUrl('putaway') }}" class="rack-tab rack-tab-warn {{ $activeTab === 'putaway' ? 'active' : '' }}">D &middot; Put Away Summary</a>
     </div>
 
     {{-- ===== One combined panel: filter (relevant to the active tab) + choose & download ===== --}}
@@ -38,6 +38,14 @@
             <input type="hidden" name="sort" value="{{ $sortBy }}">
             <input type="hidden" name="dir" value="{{ $sortDir }}">
 
+            <div class="filter-context-note">
+                @switch($activeTab)
+                    @case('stok') Filter by part code/item name and rack. @break
+                    @case('utilisasi') Rack utilization is a live snapshot — no part/rack filter applies here. @break
+                    @case('mutasi') Filter by part code/item name, rack, and a date period. @break
+                    @case('putaway') Filter by part code/item name only — this report isn't broken down by rack. @break
+                @endswitch
+            </div>
             <div class="filters" style="margin-bottom:14px;">
                 @unless ($activeTab === 'utilisasi')
                     <div class="filter-field">
@@ -48,15 +56,19 @@
                     <input type="hidden" name="q" value="{{ $search }}">
                 @endunless
 
-                <div class="filter-field">
-                    <label for="f-rack">Rack</label>
-                    <select name="rack" id="f-rack" class="filter-select">
-                        <option value="">All racks</option>
-                        @foreach ($racks as $r)
-                            <option value="{{ $r }}" @selected($rackFilter === $r)>Rack {{ substr($r, 1) }}</option>
-                        @endforeach
-                    </select>
-                </div>
+                @unless ($activeTab === 'putaway')
+                    <div class="filter-field">
+                        <label for="f-rack">Rack</label>
+                        <select name="rack" id="f-rack" class="filter-select">
+                            <option value="">All racks</option>
+                            @foreach ($racks as $r)
+                                <option value="{{ $r }}" @selected($rackFilter === $r)>Rack {{ substr($r, 1) }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                @else
+                    <input type="hidden" name="rack" value="{{ $rackFilter }}">
+                @endunless
 
                 @if ($activeTab === 'mutasi')
                     <div class="filter-field">
@@ -90,18 +102,18 @@
                 </div>
             @endif
 
-            <div class="export-sections">
-                <div class="export-sections-label">Include in download</div>
+            <details class="export-sections">
+                <summary class="export-sections-label">Include in download &mdash; defaults to the current tab, click to customize</summary>
                 <div class="export-check-row">
                     <label class="export-check"><input type="checkbox" name="sections[]" value="stok" @checked(in_array('stok', $sections, true))> A &middot; Stock per Item</label>
                     <label class="export-check"><input type="checkbox" name="sections[]" value="utilisasi" @checked(in_array('utilisasi', $sections, true))> B &middot; Rack Utilization</label>
                     <label class="export-check"><input type="checkbox" name="sections[]" value="mutasi" @checked(in_array('mutasi', $sections, true))> C &middot; Movement Summary</label>
+                    <label class="export-check"><input type="checkbox" name="sections[]" value="putaway" @checked(in_array('putaway', $sections, true))> D &middot; Put Away Summary</label>
                 </div>
-            </div>
+            </details>
             <div class="report-actions">
-                <button type="button" class="btn-export" onclick="window.print()">&#128438; Print</button>
-                <button type="submit" formaction="{{ route('laporan.export.excel') }}" class="btn-export">&#8681; Excel</button>
-                <button type="submit" formaction="{{ route('laporan.export.pdf') }}" class="btn-export">&#8681; PDF</button>
+                <button type="submit" formaction="{{ route('laporan.export.excel') }}" class="btn-export">Download Excel</button>
+                <button type="submit" formaction="{{ route('laporan.export.pdf') }}" class="btn-export">Download PDF</button>
             </div>
         </form>
     </div>
@@ -119,16 +131,16 @@
                 <table>
                     <thead>
                         <tr>
-                            <th><a href="{{ $sortUrl('sku') }}" class="th-sort {{ $sortBy === 'sku' ? 'active' : '' }}">Part Code{!! $sortIcon('sku') !!}</a></th>
-                            <th><a href="{{ $sortUrl('nama') }}" class="th-sort {{ $sortBy === 'nama' ? 'active' : '' }}">Item Name{!! $sortIcon('nama') !!}</a></th>
-                            <th class="ta-right"><a href="{{ $sortUrl('qty') }}" class="th-sort {{ $sortBy === 'qty' ? 'active' : '' }}">Total Qty{!! $sortIcon('qty') !!}</a></th>
+                            <th><a href="{{ $sortUrl('sku') }}" class="th-sort">Part Code</a></th>
+                            <th><a href="{{ $sortUrl('nama') }}" class="th-sort">Item Name</a></th>
+                            <th class="ta-right"><a href="{{ $sortUrl('qty') }}" class="th-sort">Total Qty</a></th>
                             <th>Spread Across Racks</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse ($stockPerItem as $item)
                             <tr>
-                                <td class="mono">{{ $item->component }}</td>
+                                <td>{{ $item->component }}</td>
                                 <td>{{ $item->component_name }}</td>
                                 <td class="ta-right mono">{{ number_format($item->qty_total) }} {{ $item->unit }}</td>
                                 <td class="mono">{{ $item->racks->implode(', ') ?: '-' }}</td>
@@ -196,18 +208,18 @@
                 <table>
                     <thead>
                         <tr>
-                            <th><a href="{{ $sortUrl('sku') }}" class="th-sort {{ $sortBy === 'sku' ? 'active' : '' }}">Part Code{!! $sortIcon('sku') !!}</a></th>
-                            <th><a href="{{ $sortUrl('nama') }}" class="th-sort {{ $sortBy === 'nama' ? 'active' : '' }}">Item Name{!! $sortIcon('nama') !!}</a></th>
-                            <th class="ta-right"><a href="{{ $sortUrl('masuk') }}" class="th-sort {{ $sortBy === 'masuk' ? 'active' : '' }}">Total In{!! $sortIcon('masuk') !!}</a></th>
-                            <th class="ta-right"><a href="{{ $sortUrl('keluar') }}" class="th-sort {{ $sortBy === 'keluar' ? 'active' : '' }}">Total Out{!! $sortIcon('keluar') !!}</a></th>
-                            <th class="ta-right"><a href="{{ $sortUrl('net') }}" class="th-sort {{ $sortBy === 'net' ? 'active' : '' }}">Net{!! $sortIcon('net') !!}</a></th>
-                            <th class="ta-right"><a href="{{ $sortUrl('box') }}" class="th-sort {{ $sortBy === 'box' ? 'active' : '' }}">Box Count{!! $sortIcon('box') !!}</a></th>
+                            <th><a href="{{ $sortUrl('sku') }}" class="th-sort">Part Code</a></th>
+                            <th><a href="{{ $sortUrl('nama') }}" class="th-sort">Item Name</a></th>
+                            <th class="ta-right"><a href="{{ $sortUrl('masuk') }}" class="th-sort">Total In</a></th>
+                            <th class="ta-right"><a href="{{ $sortUrl('keluar') }}" class="th-sort">Total Out</a></th>
+                            <th class="ta-right"><a href="{{ $sortUrl('net') }}" class="th-sort">Net</a></th>
+                            <th class="ta-right"><a href="{{ $sortUrl('box') }}" class="th-sort">Box Count</a></th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse ($mutationSummary as $m)
                             <tr>
-                                <td class="mono">{{ $m->component }}</td>
+                                <td>{{ $m->component }}</td>
                                 <td>{{ $m->component_name }}</td>
                                 <td class="ta-right mono qty-in">+{{ number_format($m->total_masuk) }} {{ $m->unit }}</td>
                                 <td class="ta-right mono qty-out">-{{ number_format($m->total_keluar) }} {{ $m->unit }}</td>
@@ -216,6 +228,49 @@
                             </tr>
                         @empty
                             <tr><td colspan="6" class="table-empty-msg">No movement in this period/filter.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    @endif
+
+    {{-- ===== Report D: Put Away Summary ===== --}}
+    @if ($activeTab === 'putaway')
+        <div class="note-info">Not the true stock figure — see Report A &middot; Stock per Item for that. Only totals what has been recorded through ASN &rarr; GRN &rarr; Put Away in the WMS module.</div>
+        <div class="report-panel">
+            <div class="report-panel-header">
+                <div>
+                    <div class="report-panel-title">Report D &middot; Put Away Summary</div>
+                    <div class="report-panel-caption">{{ $putAwaySummary->count() }} components shown{{ $search ? ' (filtered)' : '' }}.</div>
+                </div>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Part Code</th>
+                            <th>Item Name</th>
+                            <th class="ta-right">Qty Put Away (WMS)</th>
+                            <th>By Location</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($putAwaySummary as $p)
+                            <tr>
+                                <td>{{ $p->component }}</td>
+                                <td>{{ $p->component_name }}</td>
+                                <td class="ta-right mono qty-in">{{ fmt_qty($p->qty_put_away) }} {{ $p->uom }}</td>
+                                <td>
+                                    @foreach ($putAwayByLocation->get($p->component, collect()) as $loc)
+                                        <span class="tag" style="background:#eef2ff;color:#4338ca;margin:0 4px 4px 0;display:inline-block;">{{ $loc->location_code }}: {{ fmt_qty($loc->qty) }}</span>
+                                    @endforeach
+                                </td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="4" class="table-empty-msg">
+                                {{ $search ? 'No components match the filter.' : 'No Put Away recorded yet.' }}
+                            </td></tr>
                         @endforelse
                     </tbody>
                 </table>

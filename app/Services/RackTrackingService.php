@@ -2,12 +2,15 @@
 
 namespace App\Services;
 
+use App\Models\Inbound\PutawayLine;
 use App\Models\MatrixStorageBin;
 use App\Models\WarehouseStock;
 use Illuminate\Support\Collection;
 
 /**
- * Titik pusat query untuk sistem SWIS Inventory Tracking.
+ * Titik pusat query untuk modul monitoring WMS SWIS (dulu bernama "SWIS Inventory
+ * Tracking" — diganti nama 2026-09-18, lalu jadi "SWISS WMS" lalu "WMS SWIS"
+ * 2026-09-21, lihat PROJECT-NOTES.md).
  *
  * Pemetaan konsep dokumen -> data existing:
  * - "Item / SKU"     -> warehouse_stock.component (+ component_name, unit)
@@ -49,6 +52,119 @@ class RackTrackingService
         $col = (int) str_replace('C', '', (string) $bin->column_no);
 
         return "{$bin->side}C{$col}{$bin->stack}";
+    }
+
+    /**
+     * Semua 360 kode slot yang mungkin (R{rack}C{kolom}{layer}), dihitung dari
+     * konstanta — TIDAK query live ke pgsql_agv. Dipakai sebagai daftar pilihan
+     * lokasi di form WMS Put Away/Picking (referensi kode saja, lihat catatan di
+     * DATABASE.md soal kenapa location_code bukan FK). Sengaja tidak difilter
+     * status FULL/EMPTY karena itu status box robot AGV, domain berbeda dari WMS.
+     */
+    public function allLocationCodes(): array
+    {
+        $codes = [];
+        foreach (self::RACKS as $rack) {
+            for ($col = 1; $col <= self::COLUMNS; $col++) {
+                for ($layer = 1; $layer <= self::ROWS; $layer++) {
+                    $codes[] = "{$rack}C{$col}{$layer}";
+                }
+            }
+        }
+
+        return $codes;
+    }
+
+    /**
+     * Kode slot yang STATUS-nya benar-benar EMPTY saat ini (baca live dari
+     * m_matrix_storage_bin, read-only). Dipakai sebagai pilihan lokasi tujuan
+     * di form Put Away — supaya staf tidak bisa "konfirmasi" naruh barang di
+     * slot yang sebenarnya sudah terisi secara fisik. Ditambahkan 2026-09-20
+     * setelah dicek langsung ke source code aplikasi WinForms (Mainform) yang
+     * mengendalikan robot AGV — robotnya sendiri TIDAK dikontrol dari Laravel
+     * ini (lihat DATABASE.md/PROJECT-NOTES.md), tapi WMS tetap bisa membaca
+     * status live-nya untuk validasi, tanpa menulis apa pun ke robot.
+     */
+    public function emptyLocationCodes(): array
+    {
+        return MatrixStorageBin::whereIn('side', self::RACKS)
+            ->where('status', 'EMPTY')
+            ->get()
+            ->map(fn (MatrixStorageBin $bin) => $this->slotCode($bin))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Kode slot yang STATUS-nya FULL saat ini — dipakai sebagai pilihan lokasi
+     * ASAL di form Picking (cuma masuk akal ambil barang dari slot yang
+     * memang terisi). Sama prinsipnya dengan emptyLocationCodes() di atas.
+     */
+    public function occupiedLocationCodes(): array
+    {
+        return MatrixStorageBin::whereIn('side', self::RACKS)
+            ->where('status', 'FULL')
+            ->get()
+            ->map(fn (MatrixStorageBin $bin) => $this->slotCode($bin))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Daftar component yang SUDAH NYATA ada di warehouse_stock — dipakai sebagai
+     * saran/datalist di form ASN & GRN (Inbound), supaya staf/mahasiswa terarah ke
+     * kode komponen yang sungguhan dipakai gudang SWIS ini, bukan mengarang kode
+     * baru sembarangan (mis. contoh dari video/PDF referensi WMS lain yang TIDAK
+     * ada padanannya di sini). Tetap berupa saran, bukan FK — komponen baru yang
+     * memang belum pernah tercatat masih boleh diketik manual (gudang bisa
+     * menerima jenis barang baru), tapi defaultnya mengarahkan ke data nyata.
+     */
+    public function knownComponents(): Collection
+    {
+        return WarehouseStock::query()
+            ->whereNotNull('component')
+            ->where('component', '!=', '')
+            ->stockSummary()
+            ->orderBy('component')
+            ->get();
+    }
+
+    /**
+     * Rekap qty yang sudah di-Put Away lewat WMS, per komponen (+ breakdown per
+     * lokasi) — dipakai sebagai tab "D · WMS Put Away Summary" di Reports.
+     * SENGAJA digabung ke Reports (bukan menu sendiri) atas permintaan user:
+     * ini laporan/agregat read-only, bukan langkah kerja seperti ASN/GRN/Put
+     * Away, jadi tempatnya memang di Reports, bukan sidebar Inbound.
+     *
+     * PENTING: ini BUKAN stok fisik yang sebenarnya — cuma total yang sudah
+     * tercatat lewat ASN→GRN→Put Away di WMS ini, tidak memotong pemakaian/
+     * konsumsi (itu domain Report A · Stock per Item yang baca warehouse_stock
+     * asli). Dua angka ini BISA beda untuk component yang sama, bukan bug.
+     */
+    public function putAwaySummary(?string $search = null): Collection
+    {
+        return PutawayLine::query()
+            ->join('wms_grn_lines', 'wms_putaway_lines.grn_line_id', '=', 'wms_grn_lines.id')
+            ->selectRaw('wms_grn_lines.component, wms_grn_lines.component_name, wms_grn_lines.uom, SUM(wms_putaway_lines.qty) as qty_put_away')
+            ->when($search, function ($q) use ($search) {
+                $q->where(fn ($qq) => $qq->where('wms_grn_lines.component', 'ilike', "%{$search}%")
+                    ->orWhere('wms_grn_lines.component_name', 'ilike', "%{$search}%"));
+            })
+            ->groupBy('wms_grn_lines.component', 'wms_grn_lines.component_name', 'wms_grn_lines.uom')
+            ->orderBy('wms_grn_lines.component')
+            ->get();
+    }
+
+    /** Breakdown lokasi untuk putAwaySummary() — dikelompokkan per component. */
+    public function putAwaySummaryByLocation(): Collection
+    {
+        return PutawayLine::query()
+            ->join('wms_grn_lines', 'wms_putaway_lines.grn_line_id', '=', 'wms_grn_lines.id')
+            ->selectRaw('wms_grn_lines.component, wms_putaway_lines.location_code, SUM(wms_putaway_lines.qty) as qty')
+            ->groupBy('wms_grn_lines.component', 'wms_putaway_lines.location_code')
+            ->havingRaw('SUM(wms_putaway_lines.qty) > 0')
+            ->get()
+            ->groupBy('component');
     }
 
     /** Semua slot dalam satu rack (R1..R8), terurut H lalu V. */
@@ -141,10 +257,16 @@ class RackTrackingService
         ];
     }
 
-    /** Item dengan qty_total tertinggi saat ini — dipakai kartu ringkasan dashboard. */
-    public function topItemByStock(): ?object
+    /**
+     * Item dengan qty_total TERENDAH (tapi tetap > 0, lihat havingRaw di
+     * stockPerItem) — dipakai kartu "Items Running Low" di dashboard. Tidak
+     * ada kolom minimum-stock di database manapun, jadi "low" di sini murni
+     * relatif terhadap item lain (stok paling sedikit saat ini), bukan
+     * dibandingkan ambang batas buatan.
+     */
+    public function lowestItemByStock(): ?object
     {
-        return $this->stockPerItem(null, null, 'qty', 'desc')->first();
+        return $this->stockPerItem(null, null, 'qty', 'asc')->first();
     }
 
     /**

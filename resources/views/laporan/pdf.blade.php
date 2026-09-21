@@ -15,7 +15,7 @@
     </style>
 </head>
 <body>
-    <h1>SWIS Inventory Tracking — Inventory Report</h1>
+    <h1>WMS SWIS — Inventory Report</h1>
     <div class="sub">
         Printed: {{ now()->format('d M Y H:i') }}
         @if ($rackFilter) &middot; Rack filter: {{ $rackFilter }} @endif
@@ -74,6 +74,25 @@
                     </tr>
                 @empty
                     <tr><td colspan="6">No movement in this period/filter.</td></tr>
+                @endforelse
+            </tbody>
+        </table>
+    @endif
+
+    @if (! is_null($putAwaySummary))
+        <h2>Report D &middot; Put Away Summary</h2>
+        <div class="sub">Not the true stock figure — see Report A for that. Only totals what has been recorded through ASN -&gt; GRN -&gt; Put Away in the WMS module.</div>
+        <table>
+            <thead><tr><th>Part Code</th><th>Item Name</th><th>Qty Put Away (WMS)</th></tr></thead>
+            <tbody>
+                @forelse ($putAwaySummary as $p)
+                    <tr>
+                        <td>{{ $p->component }}</td>
+                        <td>{{ $p->component_name }}</td>
+                        <td>{{ number_format($p->qty_put_away) }} {{ $p->uom }}</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="3">No data.</td></tr>
                 @endforelse
             </tbody>
         </table>

@@ -9,7 +9,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class LaporanController extends Controller
 {
     /** Bagian laporan yang bisa dipilih user (juga dipakai sebagai nama tab di layar). */
-    private const SECTIONS = ['stok', 'utilisasi', 'mutasi'];
+    private const SECTIONS = ['stok', 'utilisasi', 'mutasi', 'putaway'];
 
     private const NEAR_FULL_PCT = 85;
 
@@ -22,12 +22,16 @@ class LaporanController extends Controller
         $stockPerItem = $this->rack->stockPerItem($rackFilter, $search, $sortBy, $sortDir);
         $rackUtilization = $this->rack->rackUtilization();
         $mutationSummary = $this->rack->mutationSummary($dateFrom, $dateTo, $rackFilter, $search, $sortBy, $sortDir);
+        $putAwaySummary = $this->rack->putAwaySummary($search);
+        $putAwayByLocation = $this->rack->putAwaySummaryByLocation();
         $nearFullCount = $rackUtilization->where('pct', '>=', self::NEAR_FULL_PCT)->count();
 
         return view('laporan.index', [
             'stockPerItem' => $stockPerItem,
             'rackUtilization' => $rackUtilization,
             'mutationSummary' => $mutationSummary,
+            'putAwaySummary' => $putAwaySummary,
+            'putAwayByLocation' => $putAwayByLocation,
             'nearFullCount' => $nearFullCount,
             'racks' => RackTrackingService::RACKS,
             'rackFilter' => $rackFilter,
@@ -78,6 +82,16 @@ class LaporanController extends Controller
                 foreach ($mutationSummary as $m) {
                     fputcsv($out, [$m->component, $m->component_name, $m->unit, $m->total_masuk, $m->total_keluar, $m->net, $m->jumlah_box]);
                 }
+                fputcsv($out, []);
+            }
+
+            if (in_array('putaway', $sections, true)) {
+                $putAwaySummary = $this->rack->putAwaySummary($search);
+                fputcsv($out, ['REPORT D - WMS PUT AWAY SUMMARY (not the true stock figure, see Report A for that)']);
+                fputcsv($out, ['Part Code', 'Item Name', 'Unit', 'Qty Put Away (WMS)']);
+                foreach ($putAwaySummary as $p) {
+                    fputcsv($out, [$p->component, $p->component_name, $p->uom, $p->qty_put_away]);
+                }
             }
 
             fclose($out);
@@ -93,6 +107,7 @@ class LaporanController extends Controller
             'items' => in_array('stok', $sections, true) ? $this->rack->stockPerItem($rackFilter, $search, $sortBy, $sortDir) : null,
             'rackUtilization' => in_array('utilisasi', $sections, true) ? $this->rack->rackUtilization() : null,
             'mutationSummary' => in_array('mutasi', $sections, true) ? $this->rack->mutationSummary($dateFrom, $dateTo, $rackFilter, $search, $sortBy, $sortDir) : null,
+            'putAwaySummary' => in_array('putaway', $sections, true) ? $this->rack->putAwaySummary($search) : null,
             'rackFilter' => $rackFilter,
             'search' => $search,
             'dateFrom' => $dateFrom,

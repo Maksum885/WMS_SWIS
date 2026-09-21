@@ -51,7 +51,7 @@
         @apply w-full border-collapse text-sm;
     }
     th {
-        @apply border-b border-slate-400 bg-slate-50 px-[18px] py-[13px] text-left text-xs font-semibold tracking-wide text-slate-700 uppercase;
+        @apply border-b border-slate-700 bg-slate-700 px-[18px] py-[13px] text-left text-xs font-semibold tracking-wide text-white uppercase;
     }
     td {
         @apply border-b border-slate-400 px-[18px] py-[14px];
@@ -72,33 +72,78 @@
         @apply flex min-h-screen;
     }
 
-    /* Sidebar */
+    /* Sidebar — navy gelap + aksen emas (warna emas diambil dari logo Multi
+       Mitra Guna, mitra kampus, bukan warna sembarang), mengikuti mockup yang
+       diberikan user. */
     .sidebar {
-        @apply flex w-[236px] shrink-0 flex-col border-r border-slate-400 bg-white text-slate-700;
+        @apply flex w-[236px] shrink-0 flex-col bg-slate-900 text-slate-300;
     }
     .brand-plate {
-        @apply mx-5 my-[22px] flex items-center justify-center;
+        @apply mx-4 my-[18px] flex items-center justify-center;
     }
     .brand-plate img {
-        @apply max-h-[76px] w-auto max-w-full object-contain;
+        @apply max-h-[92px] w-auto max-w-full object-contain;
+        /* Tanpa kotak background — tapi logo Polibatam punya teks navy gelap
+           ("p", "li") yang nyaris tak terlihat di atas sidebar navy tanpa
+           bantuan apa pun. Solusinya glow/halo putih tipis di sekeliling
+           bentuk logo (bukan kotak persegi), supaya tetap kebaca tanpa
+           terlihat seperti "background sendiri-sendiri". */
+        filter: drop-shadow(0 0 1px rgba(255, 255, 255, .55)) drop-shadow(0 0 2px rgba(255, 255, 255, .4));
+    }
+    .brand-plate-top {
+        @apply py-3;
     }
     .brand-plate-bottom {
-        @apply mt-1 mb-5;
+        @apply mt-1 mb-0 py-4;
     }
     .nav {
         @apply flex flex-1 flex-col gap-[3px] px-3 py-1.5;
     }
     .nav-item {
-        @apply flex items-center gap-3 rounded-md px-3.5 py-[11px] text-[13.5px] font-medium text-slate-700 no-underline transition-colors;
+        @apply flex items-center gap-3 rounded-md px-3.5 py-[11px] text-[13.5px] font-medium text-slate-300 no-underline transition-colors;
     }
     .nav-item svg {
         @apply h-[18px] w-[18px] shrink-0;
     }
     .nav-item:hover {
-        @apply bg-slate-100 text-slate-900;
+        @apply bg-slate-800 text-white;
     }
     .nav-item.active {
-        @apply bg-indigo-600 text-white;
+        @apply bg-amber-500 text-slate-900;
+    }
+    .nav-section-label {
+        @apply mt-3 mb-1 px-3.5 text-[10.5px] font-semibold tracking-[.06em] uppercase;
+    }
+
+    /* Outbound dibedakan dari Inbound lewat warna: Outbound = emas (senada tema
+       utama sidebar), Inbound = biru langit (kontras dingin di atas navy).
+       Bukan warna sembarang — tetap dari palet Tailwind baku. */
+    .nav-section-label-in {
+        @apply text-sky-400;
+    }
+    .nav-section-label-out {
+        @apply text-amber-400;
+    }
+    .nav-item-in:hover {
+        @apply bg-sky-950 text-sky-100;
+    }
+    .nav-item-in.active {
+        @apply bg-sky-600 text-white;
+    }
+    .nav-item-out:hover {
+        @apply bg-amber-950 text-amber-100;
+    }
+    .nav-item-out.active {
+        @apply bg-amber-500 text-slate-900;
+    }
+    .nav-section-label-master {
+        @apply text-violet-400;
+    }
+    .nav-item-master:hover {
+        @apply bg-violet-950 text-violet-100;
+    }
+    .nav-item-master.active {
+        @apply bg-violet-600 text-white;
     }
 
     /* Main shell */
@@ -124,19 +169,47 @@
         @apply mb-[22px] grid grid-cols-4 gap-4;
     }
     .card {
-        @apply relative rounded-[10px] border border-slate-400 bg-white px-5 py-[18px];
+        @apply relative rounded-[10px] border border-l-4 border-slate-400 bg-white px-5 py-[18px];
     }
     .card-link {
         @apply block text-inherit no-underline transition-all;
     }
     .card-link:hover {
-        @apply -translate-y-px border-indigo-600 shadow-[0_4px_14px_rgba(79,70,229,.12)];
+        @apply -translate-y-px shadow-[0_4px_14px_rgba(15,23,42,.10)];
     }
     .card-icon {
-        @apply mb-[10px] text-indigo-600 opacity-60;
+        @apply mb-[10px] inline-flex h-9 w-9 items-center justify-center rounded-full;
     }
     .card-icon svg {
-        @apply h-5 w-5;
+        @apply h-[18px] w-[18px];
+    }
+
+    /* Aksen warna kartu KPI Dashboard — satu warna semantik per kartu, dari
+       palet Tailwind baku (bukan hex custom), biar tiap kartu gampang dibedakan
+       sekilas mata sesuai mockup yang diberikan user. */
+    .card-accent-blue {
+        @apply border-l-blue-500;
+    }
+    .card-accent-blue .card-icon {
+        @apply bg-blue-50 text-blue-600;
+    }
+    .card-accent-purple {
+        @apply border-l-violet-500;
+    }
+    .card-accent-purple .card-icon {
+        @apply bg-violet-50 text-violet-600;
+    }
+    .card-accent-green {
+        @apply border-l-emerald-500;
+    }
+    .card-accent-green .card-icon {
+        @apply bg-emerald-50 text-emerald-600;
+    }
+    .card-accent-red {
+        @apply border-l-rose-500;
+    }
+    .card-accent-red .card-icon {
+        @apply bg-rose-50 text-rose-600;
     }
     .card-label {
         @apply mb-[10px] text-[12.5px] font-semibold tracking-[.04em] text-slate-700 uppercase;
@@ -199,6 +272,36 @@
         @apply border-indigo-600 bg-indigo-600 text-white;
     }
 
+    /* Dark navy panel header (Dashboard chart panels) — full-bleed strip di atas
+       .panel, dipakai lewat markup tambahan .panel-dark-head, bukan mengubah
+       .panel-title dasar (supaya halaman lain yang masih pakai .panel/.panel-title
+       polos, mis. Rack Monitoring, tidak ikut berubah tampilannya). */
+    .panel-dark-head {
+        @apply -mx-[22px] -mt-5 mb-4 flex items-center justify-between gap-3 rounded-t-[10px] bg-slate-900 px-[22px] py-3.5;
+    }
+    .panel-dark-head-left {
+        @apply flex items-center gap-2.5;
+    }
+    .panel-dark-head-icon {
+        @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-amber-500/20 text-amber-400;
+    }
+    .panel-dark-head-icon svg {
+        @apply h-4 w-4;
+    }
+    .panel-dark-head-title {
+        @apply text-[15px] font-semibold text-white;
+    }
+    .range-pill-dark {
+        @apply rounded-full border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-300 no-underline transition-all;
+        font-family: var(--font-mono);
+    }
+    .range-pill-dark:hover {
+        @apply border-amber-400 text-amber-300;
+    }
+    .range-pill-dark.active {
+        @apply border-amber-500 bg-amber-500 text-slate-900;
+    }
+
     /* Item Overview (dashboard) */
     .item-overview-header {
         @apply grid items-center gap-3 border-b border-slate-400 pb-[10px] text-xs font-semibold tracking-wide text-slate-900 uppercase;
@@ -222,6 +325,29 @@
     }
     .item-move-badge {
         @apply inline-block rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700;
+    }
+
+    /* WMS Activity (dashboard) — daftar hal yang masih butuh tindak lanjut */
+    .activity-list {
+        @apply flex flex-col gap-2;
+    }
+    .activity-row {
+        @apply flex items-center gap-3 rounded-md border border-slate-300 px-3.5 py-3 text-sm text-slate-900 no-underline transition-colors;
+    }
+    .activity-row:hover {
+        @apply border-amber-400 bg-amber-50;
+    }
+    .activity-badge {
+        @apply inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-amber-100 px-1.5 text-xs font-bold text-amber-800;
+    }
+    .activity-label {
+        @apply flex-1;
+    }
+    .activity-arrow {
+        @apply text-slate-500;
+    }
+    .activity-empty {
+        @apply text-sm text-slate-700;
     }
 
     /* Rack monitoring: search */
@@ -263,6 +389,15 @@
     .rack-tab.active {
         @apply border-indigo-600 bg-indigo-600 text-white;
     }
+    .rack-tab-warn {
+        @apply border-amber-400 text-amber-800;
+    }
+    .rack-tab-warn:hover {
+        @apply border-amber-600 text-amber-800;
+    }
+    .rack-tab-warn.active {
+        @apply border-amber-500 bg-amber-500 text-white;
+    }
 
     .rackmon-layout {
         @apply grid items-start gap-4;
@@ -293,6 +428,35 @@
     .legend-dot {
         @apply mr-1.5 inline-block h-[10px] w-[10px] rounded;
         vertical-align: -1px;
+    }
+
+    /* Modal pemilih lokasi rak 3D (Put Away & Picking) */
+    .rack-picker-overlay {
+        @apply fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-6;
+    }
+    .rack-picker-modal {
+        @apply flex max-h-[90vh] w-full max-w-[1100px] flex-col overflow-hidden rounded-xl bg-white;
+    }
+    .rack-picker-header {
+        @apply flex items-center justify-between border-b border-slate-400 px-5 py-3.5;
+    }
+    .rack-picker-title {
+        @apply text-base font-bold;
+    }
+    .rack-picker-close {
+        @apply cursor-pointer border-0 bg-transparent text-2xl leading-none text-slate-500;
+    }
+    .rack-picker-close:hover {
+        @apply text-slate-900;
+    }
+    .rack-picker-modal .rack-tabs {
+        @apply mt-3 mb-0 px-5 pb-3;
+    }
+    .rack-picker-3d {
+        @apply h-[580px] w-full bg-[#E8EEF5];
+    }
+    .rack-picker-legend {
+        @apply flex flex-wrap items-center gap-4 border-t border-slate-300 px-5 py-2.5 text-xs text-slate-700;
     }
 
     .rack3d-mini-wrap {
@@ -369,6 +533,17 @@
     .table-wrap {
         @apply overflow-hidden overflow-x-auto rounded-[10px] border border-slate-400 bg-white;
     }
+    /* Tint hover baris tabel per-section (header tabel-nya sendiri SUDAH
+       seragam gelap di semua halaman lewat `th` di @layer base — lihat
+       catatan di situ — supaya tidak ada halaman yang beda sendiri dan
+       bikin bingung). Ini cuma warna hover baris yang masih boleh beda
+       tipis per section. */
+    .table-wrap-in tbody tr:hover {
+        @apply bg-sky-50/60;
+    }
+    .table-wrap-out tbody tr:hover {
+        @apply bg-amber-50/60;
+    }
     .tag {
         @apply rounded-full px-[10px] py-[5px] text-[11.5px] font-semibold tracking-[.02em];
         font-family: var(--font-mono);
@@ -396,10 +571,7 @@
         @apply inline-flex cursor-pointer items-center gap-[3px] text-inherit no-underline transition-colors select-none;
     }
     .th-sort:hover {
-        @apply text-indigo-700;
-    }
-    .th-sort.active {
-        @apply font-bold text-indigo-700;
+        @apply text-amber-300;
     }
 
     /* Filters */
@@ -536,6 +708,14 @@
     .report-panel-caption {
         @apply mt-[3px] text-[13px] text-slate-700;
     }
+    /* Aksen garis atas per-section untuk form panel — sama prinsipnya dengan
+       .btn-primary-in/out & .table-wrap-in/out, ditempel manual per halaman. */
+    .report-panel-in {
+        @apply border-t-4 border-t-sky-500;
+    }
+    .report-panel-out {
+        @apply border-t-4 border-t-amber-500;
+    }
     .filter-chips {
         @apply flex flex-wrap items-center gap-2 border-t border-dashed border-slate-400 pt-3;
     }
@@ -549,11 +729,21 @@
         @apply text-indigo-700;
     }
 
+    .filter-context-note {
+        @apply mb-2.5 text-xs text-slate-500;
+    }
+
     .export-sections {
         @apply mb-4 border-t border-b border-dashed border-slate-400 pt-3.5 pb-4;
     }
     .export-sections-label {
-        @apply mb-2.5 text-xs font-semibold tracking-[.02em] text-slate-700;
+        @apply cursor-pointer text-xs font-semibold tracking-[.02em] text-slate-700 select-none;
+    }
+    .export-sections[open] > .export-sections-label {
+        @apply mb-2.5;
+    }
+    .export-sections-label::marker {
+        color: theme('colors.slate.400');
     }
     .export-check-row {
         @apply flex flex-wrap gap-5;
@@ -575,6 +765,224 @@
     .note {
         @apply mb-4 rounded-md border border-amber-300 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800;
     }
+    .note-success {
+        @apply mb-4 rounded-md border border-emerald-300 bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-800;
+    }
+    .note-info {
+        @apply mb-4 rounded-md border border-indigo-300 bg-indigo-50 px-3.5 py-2.5 text-sm text-indigo-800;
+    }
+    .note-info a {
+        @apply font-semibold text-indigo-700 underline;
+    }
+    .note-danger {
+        @apply mb-4 rounded-md border border-rose-300 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-800;
+    }
+
+    /* ===== Modul WMS: form & detail ===== */
+    .form-grid {
+        @apply grid grid-cols-3 gap-4;
+    }
+    .form-field {
+        @apply flex flex-col gap-[5px];
+    }
+    .form-field.span-2 {
+        @apply col-span-2;
+    }
+    .form-field.span-3 {
+        @apply col-span-3;
+    }
+    .form-field label {
+        @apply text-xs font-semibold tracking-[.02em] text-slate-700;
+    }
+    .form-field .req {
+        @apply text-rose-600;
+    }
+    .form-input,
+    .form-select,
+    .form-textarea {
+        @apply w-full rounded-md border border-slate-400 bg-white px-3.5 py-2.5 text-sm text-slate-900;
+        font-family: var(--font-sans);
+    }
+    .form-input:focus,
+    .form-select:focus,
+    .form-textarea:focus {
+        @apply border-indigo-600 ring-[3px] ring-indigo-100 outline-none;
+    }
+    .form-input[readonly],
+    .form-input:disabled {
+        @apply cursor-not-allowed bg-slate-50 text-slate-600;
+    }
+    .form-textarea {
+        @apply resize-y;
+    }
+    .form-error {
+        @apply text-xs font-medium text-rose-600;
+    }
+    .form-actions {
+        @apply mt-5 flex flex-wrap items-center gap-2.5 border-t border-dashed border-slate-400 pt-4;
+    }
+    .btn-primary {
+        @apply cursor-pointer rounded-md border-0 bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white no-underline;
+    }
+    .btn-primary:hover {
+        @apply bg-indigo-700;
+    }
+    .btn-primary:disabled {
+        @apply cursor-not-allowed bg-indigo-300;
+    }
+
+    /* Aksen per-section: tombol aksi utama di halaman Inbound pakai biru
+       (senada nav Inbound di sidebar), Outbound nanti pakai emas — supaya
+       warnanya konsisten dari sidebar sampai ke dalam halaman, bukan cuma
+       di nav. Diberi nama menyambung ke class dasar .btn-primary, bukan
+       ganti total, supaya tetap satu keluarga style (ukuran/padding sama). */
+    .btn-primary-in {
+        @apply cursor-pointer rounded-md border-0 bg-sky-600 px-5 py-2.5 text-sm font-medium text-white no-underline;
+    }
+    .btn-primary-in:hover {
+        @apply bg-sky-700;
+    }
+    .btn-primary-in:disabled {
+        @apply cursor-not-allowed bg-sky-300;
+    }
+    .btn-primary-out {
+        @apply cursor-pointer rounded-md border-0 bg-amber-500 px-5 py-2.5 text-sm font-medium text-slate-900 no-underline;
+    }
+    .btn-primary-out:hover {
+        @apply bg-amber-600;
+    }
+    .btn-primary-out:disabled {
+        @apply cursor-not-allowed bg-amber-200;
+    }
+
+    .btn-secondary {
+        @apply inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-slate-400 bg-white px-5 py-2.5 text-sm font-medium text-slate-900 no-underline;
+    }
+    .btn-secondary:hover {
+        @apply border-indigo-600 text-indigo-700;
+    }
+
+    /* Link "kembali" — dikasih border+background (bentuk pill/bulat penuh)
+       supaya jelas kelihatan bisa diklik, tapi bentuknya BEDA dari tombol
+       aksi persegi (.btn-primary/.btn-secondary) supaya tidak ketuker.
+       Ditaruh di pojok kiri ATAS halaman (sebelum panel), bukan dicampur
+       di baris tombol bawah — konsisten di semua halaman detail. */
+    .back-link {
+        @apply mb-3 inline-flex items-center gap-1.5 rounded-full border border-slate-400 bg-white px-4 py-2 text-sm font-semibold text-slate-700 no-underline transition-colors;
+    }
+    .back-link:hover {
+        @apply border-indigo-600 bg-indigo-50 text-indigo-700;
+    }
+    .back-link svg {
+        @apply h-4 w-4;
+    }
+    .btn-danger-ghost {
+        @apply inline-flex cursor-pointer items-center gap-1 rounded-md border-0 bg-transparent px-2 py-1 text-xs font-semibold text-rose-600;
+    }
+    .btn-danger-ghost:hover {
+        @apply text-rose-700 underline;
+    }
+
+    /* Line items (ASN/GRN/Put Away form baris dinamis) */
+    .line-items-table th,
+    .line-items-table td {
+        @apply px-2.5 py-2 align-top;
+    }
+    .line-items-table input,
+    .line-items-table select {
+        @apply w-full rounded-md border border-slate-400 bg-white px-2.5 py-2 text-[13px] text-slate-900;
+    }
+    .line-items-table input:focus,
+    .line-items-table select:focus {
+        @apply border-indigo-600 ring-2 ring-indigo-100 outline-none;
+    }
+    .line-items-table input[readonly] {
+        @apply cursor-not-allowed bg-slate-50 text-slate-600;
+    }
+    /* Kolom qty (angka) rata kanan, biar sejajar rapi dengan kolom Outstanding
+       di sebelahnya yang juga rata kanan — sebelumnya beda arah, kelihatan
+       berantakan. */
+    .line-items-table input[type="number"] {
+        text-align: right;
+    }
+    .location-picker-cell {
+        @apply flex items-center gap-1.5;
+    }
+    .location-picker-cell input {
+        @apply flex-1;
+    }
+    .pick-3d-btn {
+        @apply flex h-[34px] w-[34px] shrink-0 cursor-pointer items-center justify-center rounded-md border border-slate-400 bg-white text-slate-700;
+    }
+    .pick-3d-btn:hover {
+        @apply border-indigo-600 text-indigo-700;
+    }
+    .pick-3d-btn svg {
+        @apply h-4 w-4;
+    }
+    .line-items-foot {
+        @apply mt-3 flex items-center justify-between;
+    }
+    .add-line-btn {
+        @apply inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-dashed border-indigo-400 bg-indigo-50 px-4 py-2 text-[13px] font-semibold text-indigo-700;
+    }
+    .add-line-btn:hover {
+        @apply border-indigo-600 bg-indigo-100;
+    }
+
+    /* Status badges (ASN/GRN/Put Away/SO) */
+    .status-tag {
+        @apply inline-flex items-center rounded-full px-[10px] py-[5px] text-[11.5px] font-semibold tracking-[.02em];
+        font-family: var(--font-mono);
+    }
+    .status-draft {
+        @apply bg-slate-200 text-slate-700;
+    }
+    .status-pending {
+        @apply bg-amber-50 text-amber-700;
+    }
+    .status-confirmed {
+        @apply bg-indigo-50 text-indigo-700;
+    }
+    .status-completed {
+        @apply bg-emerald-50 text-emerald-600;
+    }
+    .status-cancelled {
+        @apply bg-rose-50 text-rose-600;
+    }
+
+    /* Detail / show pages */
+    .detail-grid {
+        @apply grid grid-cols-3 gap-x-4 gap-y-4;
+    }
+    .detail-field {
+        @apply flex flex-col gap-[3px];
+    }
+    .detail-field label {
+        @apply text-xs font-semibold tracking-[.02em] text-slate-700 uppercase;
+    }
+    .detail-field .val {
+        @apply text-sm font-medium text-slate-900;
+    }
+    .detail-actions {
+        @apply mt-4 flex flex-wrap items-center gap-2.5 border-t border-dashed border-slate-400 pt-4;
+    }
+    .empty-state {
+        @apply p-8 text-center text-sm text-slate-700;
+    }
+}
+
+@media (max-width: 900px) {
+    .form-grid,
+    .detail-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+@media (max-width: 600px) {
+    .form-grid,
+    .detail-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 @media print {
@@ -589,6 +997,15 @@
         color: inherit !important;
         font-weight: inherit !important;
         pointer-events: none;
+    }
+    /* Header tabel gelap bagus di layar, tapi di kertas cetak background gelap
+       biasanya dibuang browser (hemat tinta) — kalau itu terjadi, teks putih
+       jadi tak kelihatan di atas kertas putih. Amankan dengan balik ke terang
+       + teks gelap khusus versi cetak. */
+    th {
+        background: #F1F5F9 !important;
+        color: #334155 !important;
+        border-bottom: 1px solid #94A3B8 !important;
     }
     body,
     .content {

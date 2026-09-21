@@ -65,7 +65,10 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    // Gudang SWIS fisiknya di Batam (WIB, UTC+7) — kalau dibiarkan UTC, setiap
+    // timestamp (Created, Confirmed At, dst) selisih 7 jam dari jam asli
+    // kejadian, padahal jam di topbar (JS, waktu lokal browser) sudah benar.
+    'timezone' => 'Asia/Jakarta',
 
     /*
     |--------------------------------------------------------------------------
