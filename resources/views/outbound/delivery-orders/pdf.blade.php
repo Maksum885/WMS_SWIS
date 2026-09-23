@@ -107,8 +107,8 @@
         <tbody>
             @forelse ($deliveryOrder->lines as $l)
                 <tr>
-                    <td>{{ $l->matrixPartcode->partcode ?? '—' }}</td>
-                    <td>{{ $l->matrixPartcode->model_name ?? '—' }}</td>
+                    <td>{{ $l->component }}</td>
+                    <td>{{ $l->component_name }}</td>
                     <td class="ta-right">{{ fmt_qty($l->qty_delivered) }}</td>
                     <td>{{ $l->uom }}</td>
                     <td>{{ $l->lot_no ?: '—' }}</td>

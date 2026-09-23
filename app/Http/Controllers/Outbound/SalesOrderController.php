@@ -3,13 +3,15 @@
 namespace App\Http\Controllers\Outbound;
 
 use App\Http\Controllers\Controller;
-use App\Models\MatrixPartcode;
 use App\Models\Outbound\Customer;
 use App\Models\Outbound\SalesOrder;
+use App\Services\RackTrackingService;
 use Illuminate\Http\Request;
 
 class SalesOrderController extends Controller
 {
+    public function __construct(private RackTrackingService $rack) {}
+
     public function index(Request $request)
     {
         $status = $request->query('status');
@@ -26,10 +28,13 @@ class SalesOrderController extends Controller
     public function create()
     {
         $customers = Customer::where('is_active', true)->orderBy('name')->get();
-        $matrixPartcodes = MatrixPartcode::orderBy('partcode')->get();
+        // Sumbernya stok riil (warehouse_stock), BUKAN matrix_partcode lagi —
+        // tabel itu tidak pernah terisi lewat jalur manapun di operasional nyata.
+        // Cuma barang yang benar-benar ada stoknya yang bisa dijual.
+        $sellableItems = $this->rack->stockPerItem();
         $nextNo = 'SO-'.now()->format('ymd').'-'.str_pad((string) (SalesOrder::whereDate('created_at', now())->count() + 1), 3, '0', STR_PAD_LEFT);
 
-        return view('outbound.sales-orders.create', compact('customers', 'matrixPartcodes', 'nextNo'));
+        return view('outbound.sales-orders.create', compact('customers', 'sellableItems', 'nextNo'));
     }
 
     public function store(Request $request)
@@ -41,7 +46,7 @@ class SalesOrderController extends Controller
             'required_date' => 'nullable|date',
             'remark' => 'nullable|string|max:255',
             'lines' => 'required|array|min:1',
-            'lines.*.matrix_partcode_id' => 'required|exists:matrix_partcode,id',
+            'lines.*.component' => 'required|string|max:50|exists:warehouse_stock,component',
             'lines.*.qty_ordered' => 'required|numeric|min:0.01',
             'lines.*.uom' => 'required|string|max:20',
             'lines.*.remark' => 'nullable|string|max:255',
@@ -56,8 +61,18 @@ class SalesOrderController extends Controller
             'remark' => $data['remark'] ?? null,
         ]);
 
+        // component_name diambil dari stok riil (bukan input client), supaya nama
+        // yang tersimpan selalu konsisten dengan warehouse_stock.
+        $names = $this->rack->stockPerItem()->keyBy('component')->map(fn ($i) => $i->component_name);
+
         foreach ($data['lines'] as $line) {
-            $salesOrder->lines()->create($line);
+            $salesOrder->lines()->create([
+                'component' => $line['component'],
+                'component_name' => $names[$line['component']] ?? $line['component'],
+                'qty_ordered' => $line['qty_ordered'],
+                'uom' => $line['uom'],
+                'remark' => $line['remark'] ?? null,
+            ]);
         }
 
         return redirect()->route('outbound.sales-orders.show', $salesOrder)->with('status', "Sales Order \"{$salesOrder->so_no}\" was created successfully.");
@@ -65,14 +80,14 @@ class SalesOrderController extends Controller
 
     public function show(SalesOrder $salesOrder)
     {
-        $salesOrder->load(['customer', 'lines.matrixPartcode', 'pickings', 'deliveryOrders']);
+        $salesOrder->load(['customer', 'lines', 'pickings', 'deliveryOrders']);
 
         return view('outbound.sales-orders.show', compact('salesOrder'));
     }
 
     public function exportPdf(SalesOrder $salesOrder)
     {
-        $salesOrder->load(['customer', 'lines.matrixPartcode']);
+        $salesOrder->load(['customer', 'lines']);
 
         $pdf = \Pdf::loadView('outbound.sales-orders.pdf', compact('salesOrder'));
 

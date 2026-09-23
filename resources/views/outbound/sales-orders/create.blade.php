@@ -19,8 +19,8 @@
             </div>
         @endif
 
-        @if ($matrixPartcodes->isEmpty())
-            <div class="note-danger">No finished-good part codes found in <span class="mono">matrix_partcode</span>. Add one there before creating a Sales Order.</div>
+        @if ($sellableItems->isEmpty())
+            <div class="note-danger">No components currently in stock. Receive and put away stock (Inbound) before creating a Sales Order.</div>
         @endif
 
         <form method="POST" action="{{ route('outbound.sales-orders.store') }}" id="so-form">
@@ -60,7 +60,8 @@
                 <table class="line-items-table">
                     <thead>
                         <tr>
-                            <th>Part Code</th>
+                            <th style="width:16%">Part Code</th>
+                            <th>Part Name</th>
                             <th style="width:16%">Qty Ordered</th>
                             <th style="width:12%">UOM</th>
                             <th>Remark</th>
@@ -85,15 +86,16 @@
     <template id="line-row-template">
         <tr>
             <td>
-                <select name="lines[__i__][matrix_partcode_id]" required>
-                    <option value="">Select part</option>
-                    @foreach ($matrixPartcodes as $mp)
-                        <option value="{{ $mp->id }}">{{ $mp->partcode }} — {{ $mp->model_name }}</option>
+                <select name="lines[__i__][component]" class="mono line-component" required>
+                    <option value="">Select code</option>
+                    @foreach ($sellableItems as $item)
+                        <option value="{{ $item->component }}" data-name="{{ $item->component_name }}" data-uom="{{ $item->unit }}">{{ $item->component }} ({{ fmt_qty($item->qty_total) }} {{ $item->unit }} in stock)</option>
                     @endforeach
                 </select>
             </td>
+            <td><input type="text" class="line-component-name" readonly tabindex="-1"></td>
             <td><input type="number" name="lines[__i__][qty_ordered]" step="0.01" min="0.01" required></td>
-            <td><input type="text" name="lines[__i__][uom]" value="Pcs" required></td>
+            <td><input type="text" name="lines[__i__][uom]" class="line-uom" value="Pcs" required></td>
             <td><input type="text" name="lines[__i__][remark]"></td>
             <td class="ta-right"><button type="button" class="btn-danger-ghost remove-line">Remove</button></td>
         </tr>
@@ -117,6 +119,17 @@
         body.addEventListener('click', function (e) {
             if (e.target.classList.contains('remove-line')) {
                 e.target.closest('tr').remove();
+            }
+        });
+
+        // Part Name & UOM mengikuti kode yang dipilih (data dari stok riil).
+        body.addEventListener('change', function (e) {
+            if (!e.target.classList.contains('line-component')) return;
+            const opt = e.target.selectedOptions[0];
+            const row = e.target.closest('tr');
+            row.querySelector('.line-component-name').value = opt?.dataset.name ?? '';
+            if (opt?.dataset.uom) {
+                row.querySelector('.line-uom').value = opt.dataset.uom;
             }
         });
 

@@ -1091,6 +1091,59 @@ Order → Picking → Delivery Order.
     title tag browser (`curl` cek `<title>`) berubah jadi "... — WMS
     SWIS", PDF ASN nyata (id=2) di-download & footer-nya kebaca "WMS
     SWIS — Politeknik Negeri Batam", regresi semua menu tetap 200.
+39. **`matrix_partcode` DILEPAS dari Outbound (SO/Picking/DO) — diganti stok
+    riil (`warehouse_stock`)** (2026-09-23) — bug produksi: user deploy ke
+    komputer SWIS (`git pull` + migrate), buka Sales Order → dropdown Part
+    Code kosong, pesan "No finished-good part codes found in matrix_partcode".
+    Investigasi: `matrix_partcode` TERNYATA tidak pernah terisi lewat jalur
+    manapun di operasional nyata — asumsi lama ("tabel master yang sudah ada
+    isinya, dipakai ulang apa adanya", lihat poin sebelumnya soal FK Outbound)
+    ternyata cuma benar di database DEV (2 baris data uji manual: "10001 Botol
+    Aqua", "12 MMGP Mineral", dibuat sendiri buat testing dari sesi-sesi awal).
+    Satu-satunya data yang benar-benar mengalir dari operasional nyata adalah
+    barang yang di-scan & dikirim ke rack lewat MainForm (masuk ke
+    `warehouse_stock`, yang sama dibaca Report A "Stock per Item" & Component
+    Master). User awalnya ditawari 2 opsi (pindah ke Component Master, atau isi
+    matrix_partcode manual) — user MINTA opsi ketiga: pakai sumber yang sama
+    dengan Report A Stock per Item (bukan Component Master, karena "di
+    componen master bisa jadi belum di database" — Component Master cuma
+    katalog/pendaftaran, belum tentu barangnya benar-benar ada stok).
+    Perubahan:
+    - Migration baru `replace_matrix_partcode_with_component_on_outbound_lines`
+      — `matrix_partcode_id` FK **dihapus** dari `wms_so_lines`,
+      `wms_picking_lines`, `wms_do_lines`, diganti kolom `component` +
+      `component_name` string (persis pola `wms_asn_lines`). **Backfill
+      otomatis** dari FK lama ke kolom baru dijalankan di migration (join ke
+      `matrix_partcode` sebelum kolomnya dihapus) — riwayat SO/Picking/DO lama
+      TIDAK hilang, dicek manual lewat tinker (SO id=2 dkk tetap kebaca
+      "10001 Botol Aqua" dengan benar setelah migrate).
+    - `SalesOrderController`, `PickingController`, `DeliveryOrderController`:
+      semua query `MatrixPartcode::...` diganti
+      `RackTrackingService::stockPerItem()` (RackTrackingService di-inject ke
+      SalesOrderController & DeliveryOrderController, sebelumnya tidak pakai).
+      Validasi `lines.*.matrix_partcode_id` -> `lines.*.component` dengan rule
+      `exists:warehouse_stock,component` (cuma barang yang benar-benar ada
+      catatan stoknya yang bisa dipakai). `component_name` di-resolve ulang di
+      server dari `stockPerItem()` (bukan dari input client), sama seperti pola
+      ASN.
+    - Form SO & DO (mode manual): dropdown Part Code sekarang nampilin qty
+      stok di label opsinya, mis. "B13 (14 ml in stock)" — biar user langsung
+      lihat ketersediaan pas milih, bukan baru ketahuan pas submit gagal.
+      Form SO juga dipisah jadi 2 kolom (Part Code + Part Name, readonly
+      auto-fill) mengikuti pola ASN yang sudah disetujui user sebelumnya.
+    - Semua view show/pdf (SO, Picking, DO) yang tadinya baca
+      `$l->matrixPartcode->partcode`/`model_name` diganti `$l->component`/
+      `$l->component_name` langsung.
+    - `app/Models/MatrixPartcode.php` TIDAK dihapus (masih dipakai `BomList`),
+      cuma sudah tidak dipakai modul WMS lagi.
+    Dites: lint semua file berubah, `npm run build`, regresi 12 halaman
+    (dashboard, components, asns/create, sales-orders index+create,
+    pickings index+create, delivery-orders index+create, laporan, rack,
+    suppliers) tetap 200, HTTP end-to-end asli (buat SO dgn component
+    stok nyata "B13" -> berhasil & nama ke-resolve benar; submit component
+    yang tidak ada stoknya -> ditolak, tidak ada row baru), screenshot form
+    SO (dropdown isi stok riil, bukan kosong lagi) & show page (data lama
+    ASN id=2 tetap utuh) diperiksa visual.
 
 ## Kredensial database (dev lokal)
 

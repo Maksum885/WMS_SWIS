@@ -200,7 +200,8 @@ Sekarang arah sinkronisasinya SATU ARAH (master → ASN, bukan lagi ASN → mast
 `wms_asn_lines.component` masih string biasa (bukan FK, `component`/
 `component_name` tetap dipertahankan sebagai snapshot historis persis
 seperti alasan awal), TAPI form ASN cuma nawarin dropdown isi dari
-`wms_component_masters` (mirip persis pola `matrix_partcode_id` di Outbound)
+`wms_component_masters` (pola dropdown+validasi `exists:` yang sama juga
+dipakai Outbound sejak revisi 2026-09-23, lihat bagian Outbound di bawah)
 dan `AsnController::store()` validasi `exists:wms_component_masters,
 component_code` — komponen yang belum terdaftar di Component Master TIDAK
 BISA dipakai di ASN sampai didaftarkan dulu di sana. `component_name` yang
@@ -222,22 +223,28 @@ kena perubahan ini — masih baca `warehouse_stock` seperti sebelumnya.
 | Tabel | Isi | FK penting |
 |---|---|---|
 | `wms_sales_orders` | so_no, order_date, required_date, status | `customer_id` |
-| `wms_so_lines` | qty_ordered, uom | `sales_order_id`, **`matrix_partcode_id`**. Accessor `->qty_picked` (SUM dari picking_lines terkait) |
+| `wms_so_lines` | **component, component_name**, qty_ordered, uom | `sales_order_id`. Accessor `->qty_picked` (SUM dari picking_lines terkait) |
 | `wms_pickings` | picking_no, picking_date, status, created_by | `sales_order_id` |
-| `wms_picking_lines` | qty_picked, lot_no, **location_code**, confirmed_at, confirmed_by | `picking_id`, `so_line_id`, **`matrix_partcode_id`** |
+| `wms_picking_lines` | **component, component_name**, qty_picked, lot_no, **location_code**, confirmed_at, confirmed_by | `picking_id`, `so_line_id` |
 | `wms_delivery_orders` | do_no, delivery_date, vehicle_no, driver_name, status | `sales_order_id`, `picking_id` (nullable) |
-| `wms_do_lines` | qty_delivered, uom, lot_no | `delivery_order_id`, **`matrix_partcode_id`** |
+| `wms_do_lines` | **component, component_name**, qty_delivered, uom, lot_no | `delivery_order_id` |
 
-**Kenapa Inbound pakai `component` string tapi Outbound pakai `matrix_partcode_id`
-FK?** Karena begitu adanya data ASLI di sistem lama: `warehouse_stock.component`
-(komponen mentah, mis. `B13`) memang cuma string, tidak ada tabel master formalnya —
-jadi baris ASN/GRN **mengikuti konvensi yang sama** (tidak memaksakan struktur baru
-yang tidak ada presedennya). Sementara `matrix_partcode` (produk jadi, mis. `10001`
-"Botol Aqua") **memang sudah tabel master proper** dengan `id` — jadi baris SO/
-Picking/DO **FK langsung** ke situ (`app/Models/MatrixPartcode.php`, model yang
-SUDAH ADA, dipakai ulang, bukan bikin model part baru). Constraint FK-nya valid
-karena `matrix_partcode` ada di koneksi `pgsql`/database `db_swis` yang sama dengan
-tabel `wms_*` ini.
+**Revisi 2026-09-23**: `matrix_partcode_id` FK **DIHAPUS** dari ketiga tabel di atas,
+diganti `component`/`component_name` string — Outbound sekarang ikut pola yang
+sama persis dengan Inbound. Alasannya BUKAN preferensi desain, tapi temuan
+lapangan: user melaporkan dropdown Part Code di Sales Order kosong di komputer
+produksi (SWIS) — ternyata `matrix_partcode` memang **tidak pernah terisi lewat
+jalur manapun** di operasional nyata (dulu diasumsikan "tabel master yang sudah
+ada isinya", padahal isi tabel itu di database dev cuma data uji manual milik
+sesi development, bukan sesuatu yang otomatis terisi). Satu-satunya data yang
+benar-benar mengalir ke sistem adalah barang yang di-scan & dikirim ke rack lewat
+MainForm (masuk ke `warehouse_stock`). Jadi Part Code di SO/Picking/DO sekarang
+sumbernya `RackTrackingService::stockPerItem()` — stok riil yang sama dipakai
+Report A "Stock per Item" — bukan lagi katalog terpisah. Migration
+`2026_09_23_135213_replace_matrix_partcode_with_component_on_outbound_lines`
+juga membackfill `component`/`component_name` dari FK lama ke baris yang sudah
+ada, supaya riwayat SO/Picking/DO lama tidak hilang. `app/Models/MatrixPartcode.php`
+TETAP ADA (masih dipakai `BomList`), cuma sudah tidak dipakai modul WMS lagi.
 
 **On Hand belum jadi tabel** — rencananya dihitung (bukan disimpan) dari
 `SUM(putaway) - SUM(picking)` per part+lot+location, mengikuti pola yang sama seperti

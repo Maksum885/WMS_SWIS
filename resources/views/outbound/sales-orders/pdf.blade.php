@@ -106,8 +106,8 @@
             @forelse ($salesOrder->lines as $l)
                 @php $remaining = max(0, (float) $l->qty_ordered - $l->qty_picked); @endphp
                 <tr>
-                    <td>{{ $l->matrixPartcode->partcode ?? '—' }}</td>
-                    <td>{{ $l->matrixPartcode->model_name ?? '—' }}</td>
+                    <td>{{ $l->component }}</td>
+                    <td>{{ $l->component_name }}</td>
                     <td class="ta-right">{{ fmt_qty($l->qty_ordered) }}</td>
                     <td class="ta-right">{{ fmt_qty($l->qty_picked) }}</td>
                     <td class="ta-right">{{ fmt_qty($remaining) }}</td>

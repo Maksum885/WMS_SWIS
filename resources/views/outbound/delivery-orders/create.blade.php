@@ -99,7 +99,7 @@
                             @foreach ($prefillLines as $i => $line)
                                 <tr>
                                     <td>
-                                        <input type="hidden" name="lines[{{ $i }}][matrix_partcode_id]" value="{{ $line['matrix_partcode_id'] }}">
+                                        <input type="hidden" name="lines[{{ $i }}][component]" value="{{ $line['partcode'] }}">
                                         <span class="mono">{{ $line['partcode'] }}</span>
                                         <span class="muted-sub">{{ $line['model_name'] }}</span>
                                     </td>
@@ -130,10 +130,10 @@
         <template id="line-row-template">
             <tr>
                 <td>
-                    <select name="lines[__i__][matrix_partcode_id]" required>
-                        <option value="">Select part</option>
-                        @foreach ($matrixPartcodes as $mp)
-                            <option value="{{ $mp->id }}">{{ $mp->partcode }} — {{ $mp->model_name }}</option>
+                    <select name="lines[__i__][component]" class="mono" required>
+                        <option value="">Select code</option>
+                        @foreach ($sellableItems as $item)
+                            <option value="{{ $item->component }}">{{ $item->component }} — {{ $item->component_name }} ({{ fmt_qty($item->qty_total) }} {{ $item->unit }} in stock)</option>
                         @endforeach
                     </select>
                 </td>

@@ -74,8 +74,8 @@
                 @forelse ($picking->lines as $l)
                     <tr>
                         <td>
-                            <span class="mono">{{ $l->matrixPartcode->partcode ?? '—' }}</span>
-                            <span class="muted-sub">{{ $l->matrixPartcode->model_name ?? '' }}</span>
+                            <span class="mono">{{ $l->component }}</span>
+                            <span class="muted-sub">{{ $l->component_name }}</span>
                         </td>
                         <td class="ta-right mono">{{ fmt_qty($l->qty_picked) }} {{ $l->soLine->uom ?? '' }}</td>
                         <td class="mono">{{ $l->lot_no ?: '—' }}</td>

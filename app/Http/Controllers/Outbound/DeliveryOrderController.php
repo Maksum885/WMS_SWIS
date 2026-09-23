@@ -3,14 +3,16 @@
 namespace App\Http\Controllers\Outbound;
 
 use App\Http\Controllers\Controller;
-use App\Models\MatrixPartcode;
 use App\Models\Outbound\DeliveryOrder;
 use App\Models\Outbound\Picking;
 use App\Models\Outbound\SalesOrder;
+use App\Services\RackTrackingService;
 use Illuminate\Http\Request;
 
 class DeliveryOrderController extends Controller
 {
+    public function __construct(private RackTrackingService $rack) {}
+
     public function index(Request $request)
     {
         $deliveryOrders = DeliveryOrder::with('salesOrder.customer')
@@ -25,24 +27,25 @@ class DeliveryOrderController extends Controller
     public function create(Request $request)
     {
         $salesOrders = SalesOrder::whereIn('status', ['confirmed'])->orderByDesc('id')->get();
-        $matrixPartcodes = MatrixPartcode::orderBy('partcode')->get();
+        // Sama seperti Sales Order (lihat SalesOrderController) — sumbernya stok
+        // riil, bukan matrix_partcode, buat opsi baris manual (tanpa Picking).
+        $sellableItems = $this->rack->stockPerItem();
         $selectedPicking = null;
         $prefillLines = [];
 
         if ($request->filled('picking_id')) {
-            $selectedPicking = Picking::with(['salesOrder.customer', 'lines.matrixPartcode', 'lines.soLine'])
+            $selectedPicking = Picking::with(['salesOrder.customer', 'lines.soLine'])
                 ->find($request->query('picking_id'));
 
             if ($selectedPicking) {
                 $prefillLines = $selectedPicking->lines
-                    ->groupBy(fn ($l) => $l->matrix_partcode_id.'|'.$l->lot_no)
+                    ->groupBy(fn ($l) => $l->component.'|'.$l->lot_no)
                     ->map(function ($group) {
                         $first = $group->first();
 
                         return [
-                            'matrix_partcode_id' => $first->matrix_partcode_id,
-                            'partcode' => $first->matrixPartcode->partcode ?? '',
-                            'model_name' => $first->matrixPartcode->model_name ?? '',
+                            'partcode' => $first->component,
+                            'model_name' => $first->component_name,
                             'qty' => $group->sum('qty_picked'),
                             'uom' => $first->soLine->uom ?? 'Pcs',
                             'lot_no' => $first->lot_no,
@@ -61,7 +64,7 @@ class DeliveryOrderController extends Controller
 
         $nextNo = 'DO-'.now()->format('ymd').'-'.str_pad((string) (DeliveryOrder::whereDate('created_at', now())->count() + 1), 3, '0', STR_PAD_LEFT);
 
-        return view('outbound.delivery-orders.create', compact('salesOrders', 'matrixPartcodes', 'selectedPicking', 'prefillLines', 'openPickings', 'nextNo'));
+        return view('outbound.delivery-orders.create', compact('salesOrders', 'sellableItems', 'selectedPicking', 'prefillLines', 'openPickings', 'nextNo'));
     }
 
     public function store(Request $request)
@@ -75,7 +78,7 @@ class DeliveryOrderController extends Controller
             'driver_name' => 'nullable|string|max:100',
             'remark' => 'nullable|string|max:255',
             'lines' => 'required|array|min:1',
-            'lines.*.matrix_partcode_id' => 'required|exists:matrix_partcode,id',
+            'lines.*.component' => 'required|string|max:50|exists:warehouse_stock,component',
             'lines.*.qty_delivered' => 'required|numeric|min:0.01',
             'lines.*.uom' => 'required|string|max:20',
             'lines.*.lot_no' => 'nullable|string|max:50',
@@ -92,8 +95,16 @@ class DeliveryOrderController extends Controller
             'remark' => $data['remark'] ?? null,
         ]);
 
+        $names = $this->rack->stockPerItem()->keyBy('component')->map(fn ($i) => $i->component_name);
+
         foreach ($data['lines'] as $line) {
-            $deliveryOrder->lines()->create($line);
+            $deliveryOrder->lines()->create([
+                'component' => $line['component'],
+                'component_name' => $names[$line['component']] ?? $line['component'],
+                'qty_delivered' => $line['qty_delivered'],
+                'uom' => $line['uom'],
+                'lot_no' => $line['lot_no'] ?? null,
+            ]);
         }
 
         return redirect()->route('outbound.delivery-orders.show', $deliveryOrder)->with('status', "Delivery Order \"{$deliveryOrder->do_no}\" was recorded successfully.");
@@ -101,14 +112,14 @@ class DeliveryOrderController extends Controller
 
     public function show(DeliveryOrder $deliveryOrder)
     {
-        $deliveryOrder->load(['salesOrder.customer', 'picking', 'lines.matrixPartcode']);
+        $deliveryOrder->load(['salesOrder.customer', 'picking', 'lines']);
 
         return view('outbound.delivery-orders.show', compact('deliveryOrder'));
     }
 
     public function exportPdf(DeliveryOrder $deliveryOrder)
     {
-        $deliveryOrder->load(['salesOrder.customer', 'picking', 'lines.matrixPartcode']);
+        $deliveryOrder->load(['salesOrder.customer', 'picking', 'lines']);
 
         $pdf = \Pdf::loadView('outbound.delivery-orders.pdf', compact('deliveryOrder'));
 

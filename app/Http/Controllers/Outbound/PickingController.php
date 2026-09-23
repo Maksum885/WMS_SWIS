@@ -34,13 +34,13 @@ class PickingController extends Controller
         $prefillLines = [];
 
         if ($request->filled('sales_order_id')) {
-            $selectedSo = SalesOrder::with('lines.matrixPartcode')->find($request->query('sales_order_id'));
+            $selectedSo = SalesOrder::with('lines')->find($request->query('sales_order_id'));
             if ($selectedSo) {
                 $prefillLines = $selectedSo->lines
                     ->map(fn ($l) => [
                         'so_line_id' => $l->id,
-                        'partcode' => $l->matrixPartcode->partcode ?? '',
-                        'model_name' => $l->matrixPartcode->model_name ?? '',
+                        'partcode' => $l->component,
+                        'model_name' => $l->component_name,
                         'qty_ordered' => $l->qty_ordered,
                         'qty_picked' => $l->qty_picked,
                         'qty_outstanding' => max(0, (float) $l->qty_ordered - $l->qty_picked),
@@ -92,7 +92,8 @@ class PickingController extends Controller
             $soLine = SoLine::findOrFail($line['so_line_id']);
             $picking->lines()->create([
                 'so_line_id' => $soLine->id,
-                'matrix_partcode_id' => $soLine->matrix_partcode_id,
+                'component' => $soLine->component,
+                'component_name' => $soLine->component_name,
                 'qty_picked' => $line['qty_picked'],
                 'lot_no' => $line['lot_no'] ?? null,
                 'location_code' => $line['location_code'],
@@ -106,14 +107,14 @@ class PickingController extends Controller
 
     public function show(Picking $picking)
     {
-        $picking->load(['salesOrder.customer', 'lines.soLine', 'lines.matrixPartcode', 'deliveryOrders']);
+        $picking->load(['salesOrder.customer', 'lines.soLine', 'deliveryOrders']);
 
         return view('outbound.pickings.show', compact('picking'));
     }
 
     public function exportPdf(Picking $picking)
     {
-        $picking->load(['salesOrder.customer', 'lines.soLine', 'lines.matrixPartcode']);
+        $picking->load(['salesOrder.customer', 'lines.soLine']);
 
         $pdf = \Pdf::loadView('outbound.pickings.pdf', compact('picking'));
 

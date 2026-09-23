@@ -106,8 +106,8 @@
         <tbody>
             @forelse ($picking->lines as $l)
                 <tr>
-                    <td>{{ $l->matrixPartcode->partcode ?? '—' }}</td>
-                    <td>{{ $l->matrixPartcode->model_name ?? '—' }}</td>
+                    <td>{{ $l->component }}</td>
+                    <td>{{ $l->component_name }}</td>
                     <td>{{ $l->lot_no ?: '—' }}</td>
                     <td class="ta-right">{{ fmt_qty($l->qty_picked) }} {{ $l->soLine->uom ?? '' }}</td>
                     <td>{{ $l->location_code ?: '—' }}</td>
