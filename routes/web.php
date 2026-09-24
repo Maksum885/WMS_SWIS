@@ -59,6 +59,8 @@ Route::name('inbound.')->group(function () {
     Route::get('asns/create', [AsnController::class, 'create'])->name('asns.create');
     Route::post('asns', [AsnController::class, 'store'])->name('asns.store');
     Route::get('asns/{asn}', [AsnController::class, 'show'])->name('asns.show');
+    Route::get('asns/{asn}/edit', [AsnController::class, 'edit'])->name('asns.edit');
+    Route::put('asns/{asn}', [AsnController::class, 'update'])->name('asns.update');
     Route::post('asns/{asn}/confirm', [AsnController::class, 'confirm'])->name('asns.confirm');
     Route::get('asns/{asn}/pdf', [AsnController::class, 'exportPdf'])->name('asns.pdf');
 
@@ -87,6 +89,8 @@ Route::name('outbound.')->group(function () {
     Route::get('sales-orders/create', [SalesOrderController::class, 'create'])->name('sales-orders.create');
     Route::post('sales-orders', [SalesOrderController::class, 'store'])->name('sales-orders.store');
     Route::get('sales-orders/{salesOrder}', [SalesOrderController::class, 'show'])->name('sales-orders.show');
+    Route::get('sales-orders/{salesOrder}/edit', [SalesOrderController::class, 'edit'])->name('sales-orders.edit');
+    Route::put('sales-orders/{salesOrder}', [SalesOrderController::class, 'update'])->name('sales-orders.update');
     Route::post('sales-orders/{salesOrder}/confirm', [SalesOrderController::class, 'confirm'])->name('sales-orders.confirm');
     Route::get('sales-orders/{salesOrder}/pdf', [SalesOrderController::class, 'exportPdf'])->name('sales-orders.pdf');
 

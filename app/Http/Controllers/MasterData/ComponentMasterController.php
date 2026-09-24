@@ -69,6 +69,6 @@ class ComponentMasterController extends Controller
 
         $pdf = \Pdf::loadView('master.components.print', compact('components'));
 
-        return $pdf->stream('component-list.pdf');
+        return $pdf->download('component-list.pdf');
     }
 }

@@ -124,11 +124,11 @@
     <div class="sign-box">
         <div class="sign-col">
             <div class="sign-label">Picked By</div>
-            <div class="sign-line">Name / Date</div>
+            <div class="sign-line"></div>
         </div>
         <div class="sign-col">
             <div class="sign-label">Checked By</div>
-            <div class="sign-line">Name / Date</div>
+            <div class="sign-line"></div>
         </div>
     </div>
 </body>

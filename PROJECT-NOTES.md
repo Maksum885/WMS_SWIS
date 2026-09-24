@@ -1144,6 +1144,77 @@ Order → Picking → Delivery Order.
     yang tidak ada stoknya -> ditolak, tidak ada row baru), screenshot form
     SO (dropdown isi stok riil, bukan kosong lagi) & show page (data lama
     ASN id=2 tetap utuh) diperiksa visual.
+40. **3 perbaikan kecil + fitur Edit ASN/Sales Order** (2026-09-24), dari 1
+    pesan besar user (screenshot PDF SO/Picking/DO):
+    1. **PDF Component Master langsung download** — `ComponentMasterController
+       ::print()` pakai `->stream()` (buka preview di tab baru), diganti
+       `->download()` supaya konsisten dengan 6 PDF WMS lain yang semua
+       sudah pakai `->download()` sejak awal (baru ketahuan pas dicek —
+       cuma Component Master yang kelewatan).
+    2. **Teks "Name / Date" dihapus dari kotak tanda tangan** SO ("Prepared
+       By"/"Approved By"), Picking ("Picked By"/"Checked By"), DO ("Created
+       By"/"Acknowledged By") — user tunjuk screenshot, teks itu bikin
+       kesan ada data yang seharusnya keisi otomatis padahal itu memang
+       cuma placeholder buat tanda tangan fisik. `.sign-line` sekarang
+       cuma garis kosong, `<div class="sign-line"></div>` tanpa isi teks.
+    3. **Fitur Edit untuk ASN & Sales Order** — user tanya apa perlu edit
+       di 6 menu (ASN/GRN/Put Away/SO/Picking/DO); ditanya balik dulu soal
+       skema karena GRN/Put Away/Picking/DO itu TIDAK punya tahap draft
+       (begitu disimpan langsung dianggap sudah terjadi fisik — barang
+       sudah diterima/ditaruh/diambil/dikirim), beda dari ASN/SO yang
+       punya draft->confirm. User pilih: **ASN & SO bisa diedit selama
+       masih Draft, GRN/Put Away/Picking/DO TIDAK BISA diedit sama
+       sekali** (paling aman, kalau salah harus buat dokumen baru).
+       - Route baru `GET/PUT asns/{asn}/edit` & `GET/PUT
+         sales-orders/{salesOrder}/edit`. Guard di `edit()` DAN `update()`
+         (bukan cuma di edit() — kalau bukan draft, redirect + error,
+         dicek dari 2 sisi supaya tidak bisa di-bypass lewat POST
+         langsung).
+       - View `edit.blade.php` baru untuk keduanya, isinya mirror
+         `create.blade.php` tapi prefilled + `@method('PUT')`, dan JS-nya
+         perlu prefill baris yang SUDAH ADA (bukan cuma 1 baris kosong
+         kayak create) lewat fungsi `addRow(prefill)` yang set value
+         select lalu **dispatch event 'change' manual** biar Component
+         Name/Part Name ikut auto-fill dari data attribute.
+       - Tombol "Edit ASN"/"Edit Sales Order" cuma muncul di show page
+         kalau `status === 'draft'`.
+       - **Bug ketemu & diperbaiki saat testing** (2 kelas bug beda,
+         BUKAN sekadar validasi tambahan):
+         a. `@json($model->lines->map(fn ($l) => [...4+ keys...]))` yang
+            ditulis LANGSUNG di dalam `<script>` bikin Blade compiler
+            error "Unclosed '[' does not match ')'" — directive `@json()`
+            Blade ternyata tidak selalu robust untuk expression kompleks
+            inline dengan banyak key. Fix: pindahkan komputasi ke
+            `@php ... @endphp` block dulu (assign ke variable), baru
+            `@json($variable)` yang simpel. Diterapkan ke KEDUA file
+            (asns/edit & sales-orders/edit) sekaligus preventif.
+         b. `select.dispatchEvent(new Event('change'))` TIDAK bubble
+            secara default (constructor `Event` defaultnya `bubbles:
+            false`), padahal listener-nya didaftarkan di `body` (event
+            delegation), bukan langsung di elemen select — jadi Component
+            Name/Part Name selalu kosong pas halaman pertama dibuka meski
+            value dropdown-nya sudah benar ke-set. Fix: `new Event
+            ('change', { bubbles: true })`.
+         c. **Data lama yang komponennya sudah tidak ada di stok/Component
+            Master** (mis. SO id=5 pakai "10001" dari data uji
+            matrix_partcode lama yang sudah tidak ada di `warehouse_stock`
+            sejak poin 39) bikin dropdown edit kosong & validasi
+            `update()` menolak simpan ulang — padahal harusnya tetap bisa
+            dibuka & disimpan ulang tanpa ganti komponennya. Fix:
+            "grandfathering" — `edit()` di kedua controller menambahkan
+            komponen milik baris yang sudah ada ke daftar pilihan dropdown
+            (walau stoknya 0 / tidak ada di Component Master lagi), dan
+            `update()` pakai custom closure rule yang meloloskan kode
+            yang sudah dipakai sebelumnya di dokumen itu selain yang
+            memang valid saat ini.
+    Dites: lint semua file, `npm run build`, regresi 17 halaman tetap 200,
+    HTTP end-to-end asli (edit+update ASN id=7 & SO id=5 termasuk baris
+    "grandfathered" B12/10001 yang sudah tidak ada di stok/master saat
+    ini -> berhasil tersimpan, data diverifikasi lewat tinker), guard
+    draft-only dicek (edit ASN/SO yang sudah confirmed -> redirect, bukan
+    500), screenshot before/after tiap bug (dropdown kosong -> terisi,
+    Part Name kosong -> terisi) dibandingkan visual, PDF SO diperiksa
+    kotak tanda tangan sudah bersih tanpa teks "Name / Date".
 
 ## Kredensial database (dev lokal)
 

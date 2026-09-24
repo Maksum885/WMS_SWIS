@@ -48,6 +48,7 @@
                     @csrf
                     <button type="submit" class="btn-primary">Confirm Sales Order</button>
                 </form>
+                <a href="{{ route('outbound.sales-orders.edit', $salesOrder) }}" class="btn-secondary">Edit Sales Order</a>
             @else
                 <a href="{{ route('outbound.pickings.create', ['sales_order_id' => $salesOrder->id]) }}" class="btn-primary">Create Picking from this SO</a>
             @endif

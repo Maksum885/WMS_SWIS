@@ -52,6 +52,7 @@
                     @csrf
                     <button type="submit" class="btn-primary">Confirm ASN</button>
                 </form>
+                <a href="{{ route('inbound.asns.edit', $asn) }}" class="btn-secondary">Edit ASN</a>
             @else
                 <a href="{{ route('inbound.grns.create', ['asn_id' => $asn->id]) }}" class="btn-primary">Create GRN from this ASN</a>
             @endif
